@@ -1,111 +1,89 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* 1. 폰트 @import가 무조건 제일 처음 */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* 2. 그 다음 Tailwind */
+@import "tailwindcss";
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 3. 테마 및 커스텀 컬러 등록 */
+@theme {
+    /* Primary (파란색 계열) */
+    --color-primary: #2563EB;
+    /* 쨍하고 화사한 메인 블루 */
+    --color-primary-light: #7098F2;
+    /* 요청하신 라이트 톤 */
+    --color-primary-dark: #124AC6;
+    /* 요청하신 다크 톤 */
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+    /* Accent (포인트 옐로우/오렌지) */
+    --color-accent: #FACC15;
+    /* 쨍한 포인트 노란색 */
+    --color-accent-light: #FEF08A;
+    /* 부드러운 하이라이트 */
+
+    /* Gray (텍스트 및 테두리) */
+    --color-gray-dark: #4B5563;
+    /* 진한 회색 (본문 텍스트용) */
+    --color-gray-light: #F9FAFB;
+    /* 아주 연한 회색 (서브 배경용) */
+    --color-gray-border: #E5E7EB;
+    /* 테두리(border)용 */
+
+    /* Black & White */
+    --color-black: #111827;
+    /* 완전 까만색보다 눈이 편한 다크 그레이 */
+    --color-white: #FFFFFF;
+    /* 순백색 (카드, 컨테이너 배경용) */
+    --color-bg-subtle: #f7f6f6;
+    /* 고민하시던 약간 어두운 흰색! (전체 배경용으로 추천) */
+
+    /* Fonts */
+    --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* 4. 전체 기본 설정 */
+@layer base {
+    html {
+        font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+    body {
+        /* 기본 배경은 백색, 텍스트는 진한 검정으로 설정 */
+        @apply bg-white text-black;
+    }
 }
 
-body {
-  margin: 0;
-}
+/* 5. 애니메이션 유틸리티 */
+@layer utilities {
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
+        to {
+            opacity: 1;
+        }
+    }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 }
