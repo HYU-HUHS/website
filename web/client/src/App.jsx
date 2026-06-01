@@ -19,6 +19,7 @@ import Exec from "./pages/Exec";
 import Rules from "./pages/Rules";
 import Study from "./pages/Study";
 import Location from './pages/Location';
+import Reserve from './pages/Reserve';
 import History from './pages/History';
 import StudyGroups from './pages/StudyGroups';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -74,6 +75,7 @@ function App() {
             <Route path="/Rules" element={<Rules />} />
             <Route path="/Study" element={<Study />} />
             <Route path="/Location" element={<Location />} />
+            <Route path="/reserve" element={<Reserve />} />
             <Route path="/history" element={<History />} />
             <Route path="/study-groups" element={<StudyGroups />} />
             <Route path="/admin" element={<AdminDashboard />} />

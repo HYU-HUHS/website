@@ -38,6 +38,7 @@ const tables = {
   admin_users: ['email'],
   applicants: ['name', 'student_id', 'major', 'phone', 'email', 'message', 'status'],
   inquiries: ['title', 'content', 'contact', 'is_answered', 'answer'],
+  reservations: ['student_id', 'name', 'reserved_at', 'participant_count', 'purpose', 'status'],
 };
 
 const jsonColumns = new Set(['image_urls']);
@@ -117,7 +118,8 @@ const columnType = (column) => {
     column === 'year' ||
     column === 'month' ||
     column === 'member_count' ||
-    column === 'project_count'
+    column === 'project_count' ||
+    column === 'participant_count'
   ) return 'INTEGER';
   return 'TEXT';
 };
@@ -265,6 +267,40 @@ app.post('/api/recruit/inquiry', async (req, res, next) => {
       answer: '',
     }]);
     res.status(201).json({ status: 'success', message: '문의사항이 등록되었습니다.', data: data[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/reservations', async (req, res, next) => {
+  try {
+    const rows = await all('SELECT * FROM reservations ORDER BY reserved_at ASC, id ASC');
+    res.json({ data: rows.map(inflateRow) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/reservations', async (req, res, next) => {
+  try {
+    const { student_id, name, reserved_at, participant_count, purpose } = req.body;
+    if (!student_id || !name || !reserved_at || !participant_count) {
+      return res.status(400).json({ error: '예약 필수 항목을 모두 입력해주세요.' });
+    }
+    const existing = await get(
+      "SELECT id FROM reservations WHERE reserved_at = ? AND status != 'cancelled'",
+      [reserved_at],
+    );
+    if (existing) return res.status(409).json({ error: '이미 예약된 시간입니다.' });
+    const data = await insertRows('reservations', [{
+      student_id,
+      name,
+      reserved_at,
+      participant_count,
+      purpose: purpose || '',
+      status: 'reserved',
+    }]);
+    res.status(201).json({ data: data[0], message: '동아리방 예약이 완료되었습니다.' });
   } catch (error) {
     next(error);
   }

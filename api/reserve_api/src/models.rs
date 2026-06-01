@@ -10,6 +10,8 @@ pub struct Reservation {
     pub name: String,
     pub reserved_at: String, // SQLite에서는 날짜를 TEXT로 처리하기로 했죠?
     pub participant_count: i32,
+    pub purpose: Option<String>,
+    pub status: Option<String>,
 }
 
 // 2. 사용자가 예약을 신청할 때(입력받을 때) 사용하는 틀
@@ -20,4 +22,5 @@ pub struct CreateReservationRequest {
     pub name: String,
     pub reserved_at: String,
     pub participant_count: i32,
+    pub purpose: Option<String>,
 }
