@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ChevronUp, Mail, ExternalLink, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Mail, Send, Sparkles } from 'lucide-react';
+import { apiRequest } from '../lib/api';
+
+const initialApplication = {
+    name: '',
+    student_id: '',
+    major: '',
+    phone: '',
+    email: '',
+    message: '',
+};
 
 const Join = () => {
     const [faqs, setFaqs] = useState([]);
     const [openIndex, setOpenIndex] = useState(null);
+    const [application, setApplication] = useState(initialApplication);
+    const [submitting, setSubmitting] = useState(false);
 
     // FAQ 데이터 가져오기
     useEffect(() => {
@@ -20,6 +32,23 @@ const Join = () => {
 
     const toggleFaq = (index) => {
         setOpenIndex(openIndex === index ? null : index);
+    };
+
+    const handleApply = async (event) => {
+        event.preventDefault();
+        setSubmitting(true);
+        try {
+            await apiRequest('/recruit/apply', {
+                method: 'POST',
+                body: JSON.stringify(application),
+            });
+            alert('지원서 접수가 완료되었습니다.');
+            setApplication(initialApplication);
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -56,17 +85,41 @@ const Join = () => {
                     <Sparkles className="w-12 h-12 text-yellow-400 mx-auto mb-6" />
                     <h2 className="text-3xl font-bold mb-6">준비되셨나요?</h2>
                     <p className="text-gray-600 mb-10">
-                        지원은 구글 폼을 통해 진행됩니다.<br />
-                        포트폴리오가 있다면 링크를 함께 첨부해주세요.
+                        아래 지원서를 작성하면 운영진에게 바로 접수됩니다.<br />
+                        포트폴리오가 있다면 마지막 문항에 링크를 함께 적어주세요.
                     </p>
-                    <a
-                        href="https://forms.google.com/your-form-url" // 🔗 실제 구글폼 링크로 교체 필요
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center px-10 py-5 bg-blue-600 text-white text-xl font-bold rounded-2xl hover:bg-blue-700 hover:scale-105 transition-all duration-300 shadow-xl shadow-blue-200"
-                    >
-                        지원하러 가기 <ExternalLink className="ml-2 w-5 h-5" />
-                    </a>
+                    <form onSubmit={handleApply} className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+                        <label className="flex flex-col gap-2 font-bold text-gray-700">
+                            이름
+                            <input required value={application.name} onChange={(e) => setApplication({ ...application, name: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="홍길동" />
+                        </label>
+                        <label className="flex flex-col gap-2 font-bold text-gray-700">
+                            학번
+                            <input required value={application.student_id} onChange={(e) => setApplication({ ...application, student_id: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="20260000" />
+                        </label>
+                        <label className="flex flex-col gap-2 font-bold text-gray-700">
+                            전공
+                            <input required value={application.major} onChange={(e) => setApplication({ ...application, major: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="컴퓨터공학과" />
+                        </label>
+                        <label className="flex flex-col gap-2 font-bold text-gray-700">
+                            연락처
+                            <input required value={application.phone} onChange={(e) => setApplication({ ...application, phone: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="010-0000-0000" />
+                        </label>
+                        <label className="sm:col-span-2 flex flex-col gap-2 font-bold text-gray-700">
+                            이메일
+                            <input required type="email" value={application.email} onChange={(e) => setApplication({ ...application, email: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="huhs@example.com" />
+                        </label>
+                        <label className="sm:col-span-2 flex flex-col gap-2 font-bold text-gray-700">
+                            지원 동기
+                            <textarea required value={application.message} onChange={(e) => setApplication({ ...application, message: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium h-36 resize-none" placeholder="HUHS에서 함께 해보고 싶은 활동을 적어주세요." />
+                        </label>
+                        <div className="sm:col-span-2 flex justify-center">
+                            <button disabled={submitting} className="inline-flex items-center justify-center gap-2 px-10 py-4 bg-blue-600 text-white text-lg font-bold rounded-2xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-300 shadow-xl shadow-blue-200 disabled:opacity-50">
+                                <Send className="w-5 h-5" />
+                                {submitting ? '접수 중...' : '지원서 제출'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -100,11 +153,11 @@ const Join = () => {
             <div className="max-w-7xl mx-auto px-4 pb-10 text-center border-t pt-16">
                 <h3 className="text-xl font-bold mb-4">더 궁금한 점이 있으신가요?</h3>
                 <a
-                    href="mailto:contact@nextlevel.com"
+                    href="/contact"
                     className="inline-flex items-center text-gray-600 hover:text-black hover:underline transition-all"
                 >
                     <Mail className="w-5 h-5 mr-2" />
-                    운영진에게 메일 보내기 (contact@nextlevel.com)
+                    문의 남기기
                 </a>
             </div>
 

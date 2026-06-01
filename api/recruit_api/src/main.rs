@@ -1,6 +1,7 @@
 // src/main.rs
 use axum::{http::Method, routing::post, Router};
 use sqlx::sqlite::SqlitePool;
+use std::env;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -16,8 +17,10 @@ pub struct AppState {
 #[tokio::main]
 async fn main() {
     // 1. 데이터베이스 연결 및 테이블 생성
-    let db_url = "sqlite::memory:"; //테스트 과정이라 메모리에 가상 db 띄움; 
-    let pool = SqlitePool::connect(db_url).await.expect("DB 연결에 실패했습니다.");
+    let db_path = env::var("DATABASE_PATH")
+        .unwrap_or_else(|_| "../../web/server/data/huhsweb.sqlite".to_string());
+    let db_url = format!("sqlite:{}", db_path);
+    let pool = SqlitePool::connect(&db_url).await.expect("DB 연결에 실패했습니다.");
 
     sqlx::query(
         "
@@ -29,6 +32,7 @@ async fn main() {
             phone TEXT NOT NULL,
             email TEXT NOT NULL,
             message TEXT NOT NULL,
+            status TEXT DEFAULT 'submitted',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -38,6 +42,7 @@ async fn main() {
             content TEXT NOT NULL,
             contact TEXT NOT NULL,
             is_answered INTEGER DEFAULT 0,
+            answer TEXT DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         "
@@ -62,7 +67,7 @@ async fn main() {
 
     // 4. 서버 실행 (Axum 0.7 최신 안정화 버전 표준 문법)
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3001));
-    println!("🚀 [동아리 백엔드] 지원/문의 서버가 http://localhost:3000 에서 실행 중입니다.");
+    println!("🚀 [동아리 백엔드] 지원/문의 서버가 http://localhost:3001 에서 실행 중입니다.");
     
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

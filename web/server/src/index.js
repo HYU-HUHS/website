@@ -36,10 +36,12 @@ const tables = {
   study_materials: ['title', 'description', 'file_name', 'file_url'],
   profiles: ['email', 'role'],
   admin_users: ['email'],
+  applicants: ['name', 'student_id', 'major', 'phone', 'email', 'message', 'status'],
+  inquiries: ['title', 'content', 'contact', 'is_answered', 'answer'],
 };
 
 const jsonColumns = new Set(['image_urls']);
-const booleanColumns = new Set(['is_highlight']);
+const booleanColumns = new Set(['is_highlight', 'is_answered']);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -88,7 +90,7 @@ const inflateRow = (row) => {
     }
   }
   for (const column of booleanColumns) {
-    if (column in next) next[column] = Boolean(next[column]);
+    if (column in next) next[column] = next[column] === true || next[column] === 1 || next[column] === '1';
   }
   return next;
 };
@@ -108,6 +110,18 @@ const whereClause = (filters = []) => {
   return { sql: ` WHERE ${parts.join(' AND ')}`, params };
 };
 
+const columnType = (column) => {
+  if (booleanColumns.has(column)) return 'INTEGER';
+  if (column === 'order') return 'INTEGER';
+  if (
+    column === 'year' ||
+    column === 'month' ||
+    column === 'member_count' ||
+    column === 'project_count'
+  ) return 'INTEGER';
+  return 'TEXT';
+};
+
 const initDb = async () => {
   await run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -119,11 +133,7 @@ const initDb = async () => {
   `);
 
   for (const [table, columns] of Object.entries(tables)) {
-    const definitions = columns.map((column) => {
-      if (column === 'order') return '"order" INTEGER';
-      if (column === 'year' || column === 'month' || column === 'member_count' || column === 'project_count') return `"${column}" INTEGER`;
-      return `"${column}" TEXT`;
-    });
+    const definitions = columns.map((column) => `"${column}" ${columnType(column)}`);
     await run(`
       CREATE TABLE IF NOT EXISTS "${table}" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,6 +141,14 @@ const initDb = async () => {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    const existingColumns = await all(`PRAGMA table_info("${table}")`);
+    const existingColumnNames = new Set(existingColumns.map((column) => column.name));
+    for (const column of columns) {
+      if (!existingColumnNames.has(column)) {
+        await run(`ALTER TABLE "${table}" ADD COLUMN "${column}" ${columnType(column)}`);
+      }
+    }
   }
 
   await seedDefaults();
@@ -207,6 +225,46 @@ app.post('/api/auth/login', async (req, res, next) => {
     const user = await get('SELECT id, email FROM users WHERE email = ? AND password = ?', [email, password]);
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     res.json({ data: { session: { user }, user } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/recruit/apply', async (req, res, next) => {
+  try {
+    const { name, student_id, major, phone, email, message } = req.body;
+    if (!name || !student_id || !major || !phone || !email || !message) {
+      return res.status(400).json({ error: '지원서 필수 항목을 모두 입력해주세요.' });
+    }
+    const data = await insertRows('applicants', [{
+      name,
+      student_id,
+      major,
+      phone,
+      email,
+      message,
+      status: 'submitted',
+    }]);
+    res.status(201).json({ status: 'success', message: '지원서 접수가 완료되었습니다.', data: data[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/recruit/inquiry', async (req, res, next) => {
+  try {
+    const { title, content, contact } = req.body;
+    if (!title || !content || !contact) {
+      return res.status(400).json({ error: '문의 제목, 내용, 연락처를 모두 입력해주세요.' });
+    }
+    const data = await insertRows('inquiries', [{
+      title,
+      content,
+      contact,
+      is_answered: false,
+      answer: '',
+    }]);
+    res.status(201).json({ status: 'success', message: '문의사항이 등록되었습니다.', data: data[0] });
   } catch (error) {
     next(error);
   }
