@@ -1,122 +1,94 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { supabase } from './lib/supabase'; // 출입증
+
+// 컴포넌트들 import
+import Header from './components/Header';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import About from './pages/About';
+{/* import Gallery from './pages/Gallery'; */ }
+import Contact from './pages/Contact';
+import Login from './pages/Login';
+import Board from './pages/Board';
+import Write from './pages/Write';
+import PostDetail from './pages/PostDetail';
+import Join from './pages/Join';
+import Exec from "./pages/Exec";
+import Rules from "./pages/Rules";
+import Study from "./pages/Study";
+import Location from './pages/Location';
+import History from './pages/History';
+import StudyGroups from './pages/StudyGroups';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminPosts from './pages/admin/AdminPosts';
+import AdminStudyGroups from './pages/admin/AdminStudyGroups';
+import AdminFaqs from './pages/admin/AdminFaqs';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminHistory from './pages/admin/AdminHistory';
+
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const location = useLocation();
+  // 1. 로그인한 사용자 정보를 담을 그릇 (처음엔 null)
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    // 2. 앱 켜지자마자 "지금 로그인된 사람 있어?" 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // 3. 실시간 감시 (로그인/로그아웃 하는 순간을 포착!)
+    // onAuthStateChange: 상태가 변할 때마다 실행되는 콜백 함수
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    // 앱 꺼질 때 감시 해제 (메모리 누수 방지 - C의 free() 같은 개념)
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="flex flex-col min-h-screen">
+      {/* 4. Header에게 session 정보 넘겨주기! (이제 Header도 로그인 여부를 압니다) */}
+      <Header session={session} />
 
-      <div className="ticks"></div>
+      <main className="grow relative">
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            {/* <Route path="/gallery" element={<Gallery />} /> */}
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/board" element={<Board />} />
+            <Route path="/board/write" element={<Write />} />
+            <Route path="/board/:id" element={<PostDetail />} />
+            <Route path="/join" element={<Join />} />
+            <Route path="/Exec" element={<Exec />} />
+            <Route path="/Rules" element={<Rules />} />
+            <Route path="/Study" element={<Study />} />
+            <Route path="/Location" element={<Location />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/study-groups" element={<StudyGroups />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/posts" element={<AdminPosts />} />
+            <Route path="/admin/study-groups" element={<AdminStudyGroups />} />
+            <Route path="/admin/faqs" element={<AdminFaqs />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/history" element={<AdminHistory />} />
+          </Routes>
+        </AnimatePresence>
+      </main>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <Footer />
+    </div>
+  );
 }
 
-export default App
+export default App;

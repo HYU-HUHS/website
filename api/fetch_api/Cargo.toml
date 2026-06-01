@@ -1,0 +1,12 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"                                    # 웹 프레임워크 (주소 연결)
+tokio = { version = "1", features = ["full"] }  # 비동기 실행 엔진
+serde = { version = "1.0", features = ["derive"] } # JSON 데이터 변환용
+tower-http = { version = "0.5", features = ["cors"] } # 프론트엔드 통신 허용용
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+serde_json = "1.0"
