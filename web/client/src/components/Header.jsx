@@ -57,6 +57,7 @@ const Header = () => {
         { label: '연혁', path: '/history' },
         { label: '조직도', path: '/exec' },
         { label: '동아리방', path: '/location' },
+        { label: '동아리방 예약', path: '/reserve' },
       ]
     },
     {

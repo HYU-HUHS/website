@@ -8,11 +8,12 @@ pub async fn create_reservation(
     Json(payload): Json<CreateReservationRequest>, // 사용자가 보낸 JSON을 구조체로 자동 변환!
 ) -> StatusCode {
     // SQL 문으로 DB에 저장을 명령합니다.
-    let result = sqlx::query("INSERT INTO reservations (student_id, name, reserved_at, participant_count) VALUES (?, ?, ?, ?)")
+    let result = sqlx::query("INSERT INTO reservations (student_id, name, reserved_at, participant_count, purpose, status) VALUES (?, ?, ?, ?, ?, 'reserved')")
     .bind(&payload.student_id)
     .bind(&payload.name)
     .bind(&payload.reserved_at)
     .bind(payload.participant_count)
+    .bind(payload.purpose.as_deref().unwrap_or(""))
     .execute(&pool)
     .await;
 
