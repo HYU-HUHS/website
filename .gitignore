@@ -1,3 +1,10 @@
+<<<<<<< HEAD
 node_modules/
 api/.env
 api/target/
+=======
+/target
+node_modules/
+web/server/data/
+web/server/uploads/
+>>>>>>> upstream/main
