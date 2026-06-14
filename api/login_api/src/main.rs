@@ -121,15 +121,15 @@ async fn me(
         .strip_prefix("Bearer ")
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     let data = decode::<Claims>(
         token,
-        &DecodingKey::from_secret(
-            std::env::var("JWT_SECRET")
-                .unwrap()
-                .as_bytes(),
-        ),
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
         &Validation::default(),
     )
+    .map_err(|_| StatusCode::UNAUTHORIZED)?;
     .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     Ok(Json(MeRes {
