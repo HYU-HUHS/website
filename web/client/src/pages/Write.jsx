@@ -1,19 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
-import { X, ImagePlus, BookOpenText } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { X, ImagePlus, BookOpenText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 function Write() {
+    const [searchParams] = useSearchParams();
+    const editId = searchParams.get('edit');
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
 
     // 사진 다중 선택을 위한 배열 상태
     const [files, setFiles] = useState([]);
     const [previewUrls, setPreviewUrls] = useState([]); // 화면 미리보기용 임시 URL
+    const [existingUrls, setExistingUrls] = useState([]);
+    const [removedExistingUrls, setRemovedExistingUrls] = useState([]);
+    const [editingPost, setEditingPost] = useState(null);
 
     const [uploading, setUploading] = useState(false);
+    const [checkingAuth, setCheckingAuth] = useState(true);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkPermission = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert('로그인이 필요합니다.');
+                navigate('/login');
+                return;
+            }
+            if (user.role !== 'member' && user.role !== 'admin') {
+                alert('부원만 글을 작성할 수 있습니다.');
+                navigate('/board');
+                return;
+            }
+            if (editId) {
+                const { data: post, error } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .eq('id', editId)
+                    .single();
+                if (error || !post) {
+                    alert('글을 찾을 수 없습니다.');
+                    navigate('/board');
+                    return;
+                }
+                const canEdit = user.role === 'admin'
+                    || post.author_email?.toLowerCase() === user.email?.toLowerCase()
+                    || String(post.user_id || '') === String(user.id || '');
+                if (!canEdit) {
+                    alert('본인이 작성한 글만 수정할 수 있습니다.');
+                    navigate(`/board/${editId}`);
+                    return;
+                }
+                setEditingPost(post);
+                setTitle(post.title || '');
+                setContent(post.content || '');
+                const urls = post.image_urls ? [...post.image_urls] : [];
+                if (post.image_url && urls.length === 0) urls.push(post.image_url);
+                setExistingUrls(urls);
+            }
+            setCheckingAuth(false);
+        };
+        checkPermission();
+    }, [editId, navigate]);
 
     // 사용자가 사진을 선택했을 때 (Storage 업로드 X, 미리보기만 생성)
     const handleFileSelect = (e) => {
@@ -41,6 +91,20 @@ function Write() {
         });
     };
 
+    const handleRemoveExistingImage = (indexToRemove) => {
+        const removedUrl = existingUrls[indexToRemove];
+        setRemovedExistingUrls((prev) => [...prev, removedUrl]);
+        setExistingUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
+    };
+
+    const moveItem = (items, index, direction) => {
+        const target = direction === 'left' ? index - 1 : index + 1;
+        if (target < 0 || target >= items.length) return items;
+        const next = [...items];
+        [next[index], next[target]] = [next[target], next[index]];
+        return next;
+    };
+
     // 컴포넌트 언마운트 시 메모리 누수 방지
     useEffect(() => {
         return () => {
@@ -56,6 +120,11 @@ function Write() {
         setUploading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            if (user?.role !== 'member' && user?.role !== 'admin') {
+                alert('부원만 글을 작성할 수 있습니다.');
+                navigate('/board');
+                return;
+            }
             let uploadedImageUrls = [];
 
             // 1. 선택된 사진이 있다면 Promise.all로 Storage에 한 번에 업로드
@@ -84,31 +153,54 @@ function Write() {
                 uploadedImageUrls = await Promise.all(uploadPromises);
             }
 
-            // 2. DB에 텍스트와 사진 URL 배열 저장
-            const { error: insertError } = await supabase
-                .from('posts')
-                .insert([
-                    {
+            if (removedExistingUrls.length > 0) {
+                const fileNamesToDelete = removedExistingUrls.map((url) => url.split('/').pop()).filter(Boolean);
+                await supabase.storage.from('images').remove(fileNamesToDelete);
+            }
+
+            const finalImageUrls = [...existingUrls, ...uploadedImageUrls];
+
+            if (editingPost) {
+                const { error: updateError } = await supabase
+                    .from('posts')
+                    .update({
                         title,
                         content,
-                        image_urls: uploadedImageUrls, // 여러 장의 사진 배열 삽입!
-                        user_id: user?.id,
-                        author_email: user?.email
-                    }
-                ]);
+                        image_urls: finalImageUrls,
+                    })
+                    .eq('id', editingPost.id);
+                if (updateError) throw updateError;
+                alert('수정 완료!');
+                navigate(`/board/${editingPost.id}`);
+            } else {
+                const { data, error: insertError } = await supabase
+                    .from('posts')
+                    .insert([
+                        {
+                            title,
+                            content,
+                            image_urls: finalImageUrls,
+                            user_id: user?.id,
+                            author_email: user?.email
+                        }
+                    ]);
 
-            if (insertError) throw insertError;
-
-            alert("등록 완료! 🎉");
-            navigate('/board');
+                if (insertError) throw insertError;
+                alert("등록 완료!");
+                navigate(data?.[0]?.id ? `/board/${data[0].id}` : '/board');
+            }
 
         } catch (error) {
             console.error(error);
-            alert("글 작성 중 오류가 발생했습니다 ㅠㅠ");
+            alert(error.message || "글 저장 중 오류가 발생했습니다.");
         } finally {
             setUploading(false);
         }
     };
+
+    if (checkingAuth) {
+        return <div className="min-h-screen bg-bg-subtle pt-32 text-center text-gray-dark">권한 확인 중...</div>;
+    }
 
     return (
         <div className="min-h-screen bg-bg-subtle pt-32 pb-20 px-4 sm:px-6 font-pretendard">
@@ -123,8 +215,12 @@ function Write() {
                         <BookOpenText className="w-8 h-8 text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-black tracking-tight">새 소식 작성</h1>
-                        <p className="text-gray-dark mt-1">동아리의 다양한 이야기를 공유해주세요.</p>
+                        <h1 className="text-3xl font-black text-black tracking-tight">
+                            {editingPost ? '소식 수정' : '새 소식 작성'}
+                        </h1>
+                        <p className="text-gray-dark mt-1">
+                            {editingPost ? '작성한 소식을 다듬어주세요.' : '동아리의 다양한 이야기를 공유해주세요.'}
+                        </p>
                     </div>
                 </div>
 
@@ -176,8 +272,42 @@ function Write() {
                         </div>
 
                         {/* 미리보기 갤러리 */}
-                        {previewUrls.length > 0 && (
+                        {(existingUrls.length > 0 || previewUrls.length > 0) && (
                             <div className="flex gap-4 overflow-x-auto py-2 mt-2 scrollbar-hide">
+                                {existingUrls.map((url, index) => (
+                                    <div key={url} className="relative flex-shrink-0 group">
+                                        <img
+                                            src={url}
+                                            alt={`existing-${index}`}
+                                            className="w-32 h-32 object-cover rounded-2xl border border-border shadow-sm"
+                                        />
+                                        <div className="absolute bottom-2 left-2 right-2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                onClick={() => setExistingUrls((prev) => moveItem(prev, index, 'left'))}
+                                                className="bg-black/60 text-white p-1 rounded-full disabled:opacity-30"
+                                                disabled={index === 0}
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setExistingUrls((prev) => moveItem(prev, index, 'right'))}
+                                                className="bg-black/60 text-white p-1 rounded-full disabled:opacity-30"
+                                                disabled={index === existingUrls.length - 1}
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveExistingImage(index)}
+                                            className="absolute -top-2 -right-2 bg-black text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-500 z-20"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
                                 {previewUrls.map((url, index) => (
                                     <div key={index} className="relative flex-shrink-0 group">
                                         <img
@@ -185,6 +315,30 @@ function Write() {
                                             alt={`preview-${index}`}
                                             className="w-32 h-32 object-cover rounded-2xl border border-border shadow-sm"
                                         />
+                                        <div className="absolute bottom-2 left-2 right-2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPreviewUrls((prev) => moveItem(prev, index, 'left'));
+                                                    setFiles((prev) => moveItem(prev, index, 'left'));
+                                                }}
+                                                className="bg-black/60 text-white p-1 rounded-full disabled:opacity-30"
+                                                disabled={index === 0}
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPreviewUrls((prev) => moveItem(prev, index, 'right'));
+                                                    setFiles((prev) => moveItem(prev, index, 'right'));
+                                                }}
+                                                className="bg-black/60 text-white p-1 rounded-full disabled:opacity-30"
+                                                disabled={index === previewUrls.length - 1}
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                         {/* 삭제 버튼 (호버 시 등장) */}
                                         <button
                                             type="button"
@@ -216,10 +370,10 @@ function Write() {
                             {uploading ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    <span>업로드 중...</span>
+                                    <span>{editingPost ? '수정 중...' : '업로드 중...'}</span>
                                 </>
                             ) : (
-                                <span>게시하기</span>
+                                <span>{editingPost ? '수정 완료' : '게시하기'}</span>
                             )}
                         </button>
                     </div>

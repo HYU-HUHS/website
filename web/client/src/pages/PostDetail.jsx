@@ -2,19 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import PageTransition from '../components/PageTransition';
-import { ArrowLeft, User, Calendar, Images, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Images, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function PostDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [post, setPost] = useState(null);
+    const [user, setUser] = useState(null);
 
     // 🌟 현재 보고 있는 사진의 인덱스를 저장하는 상태 (슬라이더용)
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
         fetchPost();
+        supabase.auth.getUser().then(({ data }) => setUser(data.user || null));
     }, [id]);
 
     const fetchPost = async () => {
@@ -43,6 +45,33 @@ function PostDetail() {
     const handleNextImage = () => {
         if (post.image_urls && currentImageIndex < post.image_urls.length - 1) {
             setCurrentImageIndex(prev => prev + 1);
+        }
+    };
+
+    const canManagePost = user && (
+        user.role === 'admin'
+        || post?.author_email?.toLowerCase() === user.email?.toLowerCase()
+        || String(post?.user_id || '') === String(user.id || '')
+    );
+
+    const handleDelete = async () => {
+        if (!canManagePost) return;
+        if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+
+        try {
+            const urlsToDelete = post.image_urls ? [...post.image_urls] : [];
+            if (post.image_url) urlsToDelete.push(post.image_url);
+            if (urlsToDelete.length > 0) {
+                const fileNames = urlsToDelete.map((url) => url.split('/').pop()).filter(Boolean);
+                await supabase.storage.from('images').remove(fileNames);
+            }
+
+            const { error } = await supabase.from('posts').delete().eq('id', post.id);
+            if (error) throw error;
+            alert('게시글이 삭제되었습니다.');
+            navigate('/board');
+        } catch (error) {
+            alert(error.message || '삭제 중 오류가 발생했습니다.');
         }
     };
 
@@ -86,7 +115,27 @@ function PostDetail() {
                                 <span>{post.author_email?.split('@')[0]}</span>
                             </div>
                         </div>
-                        <h1 className="text-3xl md:text-5xl font-black leading-tight text-black tracking-tight">{post.title}</h1>
+                        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                            <h1 className="text-3xl md:text-5xl font-black leading-tight text-black tracking-tight">{post.title}</h1>
+                            {canManagePost && (
+                                <div className="flex shrink-0 gap-2">
+                                    <button
+                                        onClick={() => navigate(`/board/write?edit=${post.id}`)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary-dark transition-colors"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        수정
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        삭제
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* 🌟 버튼 클릭형 슬라이더 (Carousel) */}
