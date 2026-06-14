@@ -619,6 +619,14 @@ const routeApi = async (request, env, pathname) => {
 
   if (!root) return json({ ok: true, message: 'Cloudflare Pages Function API is running' });
 
+  if (root === 'config' && request.method === 'GET') {
+    return json({
+      data: {
+        googleClientId: env.GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID || '',
+      },
+    });
+  }
+
   if (root === 'auth' && second === 'signup' && request.method === 'POST') return handleSignup(request, env);
   if (root === 'auth' && second === 'login' && request.method === 'POST') return handleLogin(request, env);
   if (root === 'auth' && second === 'google' && request.method === 'POST') return handleGoogleLogin(request, env);

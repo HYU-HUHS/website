@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import PageTransition from '../components/PageTransition';
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services';
+const FALLBACK_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const loadGoogleScript = () =>
   new Promise((resolve, reject) => {
@@ -33,7 +34,25 @@ function Login() {
   const buttonRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const [clientId, setClientId] = useState(FALLBACK_CLIENT_ID);
+
+  useEffect(() => {
+    if (clientId) return;
+
+    let cancelled = false;
+    fetch('/api/config')
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && payload?.data?.googleClientId) setClientId(payload.data.googleClientId);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Google 로그인 설정을 불러오지 못했습니다.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId || !buttonRef.current) return;
@@ -90,7 +109,7 @@ function Login() {
             <div className="flex justify-center min-h-11" ref={buttonRef} />
           ) : (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
-              VITE_GOOGLE_CLIENT_ID 환경변수가 필요합니다.
+              Google 로그인 환경변수가 필요합니다.
             </div>
           )}
 
