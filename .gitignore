@@ -1,10 +1,13 @@
-<<<<<<< HEAD
 node_modules/
-api/.env
+target/
 api/target/
-=======
-/target
-node_modules/
+api/**/target/
+api/.env
+web/client/.env
+web/server/.env
 web/server/data/
 web/server/uploads/
->>>>>>> upstream/main
+web/client/dist/
+*.log
+*.local
+.DS_Store
