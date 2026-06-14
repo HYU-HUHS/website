@@ -19,9 +19,16 @@ export const apiRequest = async (path, options = {}) => {
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders(), ...(options.headers || {}) },
     ...options,
   });
-  const payload = await response.json().catch(() => ({}));
+  const rawBody = await response.text();
+  let payload = {};
+  try {
+    payload = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    payload = {};
+  }
   if (!response.ok) {
-    throw new Error(payload.error || payload.message || '요청 처리 중 오류가 발생했습니다.');
+    const fallback = rawBody ? rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) : '';
+    throw new Error(payload.error || payload.message || fallback || `요청 처리 중 오류가 발생했습니다. (${response.status})`);
   }
   return payload;
 };

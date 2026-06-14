@@ -22,9 +22,16 @@ const request = async (path, options = {}) => {
     headers: options.body instanceof FormData ? authHeaders : { 'Content-Type': 'application/json', ...authHeaders },
     ...options,
   });
-  const payload = await response.json().catch(() => ({}));
+  const rawBody = await response.text();
+  let payload = {};
+  try {
+    payload = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    payload = {};
+  }
   if (!response.ok) {
-    throw new Error(payload.error || 'Request failed');
+    const fallback = rawBody ? rawBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) : '';
+    throw new Error(payload.error || payload.message || fallback || `Request failed (${response.status})`);
   }
   return payload;
 };

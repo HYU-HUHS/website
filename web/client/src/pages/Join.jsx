@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ChevronDown, ChevronUp, Mail, Send, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, LogIn, Mail, Send, Sparkles } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 
 const initialApplication = {
@@ -94,6 +94,44 @@ const Join = () => {
         }
     };
 
+    if (profileLoading) {
+        return (
+            <div className="min-h-screen bg-white pt-32 px-4 flex items-center justify-center">
+                <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                    <div className="mx-auto mb-5 w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Sparkles className="w-6 h-6" />
+                    </div>
+                    <h1 className="text-2xl font-black text-gray-950 mb-3">가입 신청 확인 중</h1>
+                    <p className="text-gray-500 font-medium">로그인 정보를 불러오고 있습니다.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!profile) {
+        return (
+            <div className="min-h-screen bg-white pt-28 pb-20 px-4 flex items-center justify-center">
+                <section className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                    <div className="mx-auto mb-5 w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <LogIn className="w-7 h-7" />
+                    </div>
+                    <h1 className="text-3xl font-black text-gray-950 mb-3">로그인이 필요합니다</h1>
+                    <p className="text-gray-600 leading-relaxed mb-7">
+                        HUHS 가입 신청은 한양대학교 Google 계정으로 로그인한 뒤 진행할 수 있습니다.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/login')}
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                    >
+                        <LogIn className="w-5 h-5" />
+                        로그인하고 가입 신청하기
+                    </button>
+                </section>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-white pt-24 pb-20">
 
@@ -131,18 +169,7 @@ const Join = () => {
                         아래 지원서를 작성하면 운영진에게 바로 접수됩니다.<br />
                         포트폴리오가 있다면 마지막 문항에 링크를 함께 적어주세요.
                     </p>
-                    {profileLoading ? (
-                        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-gray-500 font-bold">
-                            로그인 정보를 확인하는 중입니다.
-                        </div>
-                    ) : !profile ? (
-                        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8">
-                            <p className="text-gray-600 mb-6">한양대학교 계정으로 로그인한 뒤 가입 신청을 할 수 있습니다.</p>
-                            <button onClick={() => navigate('/login')} className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors">
-                                로그인하러 가기
-                            </button>
-                        </div>
-                    ) : profile.role !== 'general' ? (
+                    {profile.role !== 'general' ? (
                         <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8">
                             <p className="text-gray-700 font-bold">이미 HUHS 부원 권한이 있는 계정입니다.</p>
                             <p className="text-gray-500 mt-2">동아리방 예약과 커뮤니티 활동을 이용해주세요.</p>

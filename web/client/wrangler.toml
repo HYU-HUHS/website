@@ -1,0 +1,12 @@
+name = "huhs-website"
+compatibility_date = "2026-06-14"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "huhs-web"
+database_id = "788b9458-5858-4364-a944-7db18f6cb43c"
+
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "huhs-web-uploads"
