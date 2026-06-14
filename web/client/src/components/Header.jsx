@@ -10,6 +10,7 @@ const Header = () => {
   const [user, setUser] = useState(null);
   const location = useLocation();
   const role = user?.role || 'general';
+  const isAdmin = role === 'admin';
   const canApply = role === 'general';
   const canReserve = role === 'member' || role === 'admin';
 
@@ -87,6 +88,14 @@ const Header = () => {
       label: 'Join',
       path: '/join',
       children: []
+    },
+    isAdmin && {
+      label: 'Admin',
+      path: '/admin',
+      children: [
+        { label: '관리자 홈', path: '/admin' },
+        { label: '회원 관리', path: '/admin/users' },
+      ]
     },
   ].filter(Boolean);
 

@@ -77,12 +77,11 @@ const AdminDashboard = () => {
             color: 'bg-white border border-border',
             iconBg: 'bg-purple-100 text-purple-600'
         },
-        // 🌟 새로 추가된 운영진 관리 메뉴 🌟
         {
-            title: '운영진 권한 관리',
-            description: '웹사이트 관리자 권한을 부여하거나 회수합니다.',
+            title: '회원 관리',
+            description: '회원 목록을 확인하고 일반/부원/관리자 타입을 변경합니다.',
             path: '/admin/users',
-            icon: ShieldCheck, // 상단에서 import된 ShieldCheck 아이콘 재사용
+            icon: ShieldCheck,
             color: 'bg-white border border-border',
             iconBg: 'bg-red-100 text-red-600'
         }

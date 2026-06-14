@@ -41,9 +41,9 @@ const AdminUsers = () => {
         }
     };
 
-    // 회원 등급(Role) 변경 핸들러
+    // 회원 타입(Role) 변경 핸들러
     const handleRoleChange = async (userId, newRole) => {
-        if (!confirm('해당 회원의 등급을 변경하시겠습니까?')) {
+        if (!confirm('해당 회원의 계정 타입을 변경하시겠습니까?')) {
             fetchUsersSilently(); // 취소 시 원래 UI(select 값)로 되돌리기 위함
             return;
         }
@@ -53,7 +53,7 @@ const AdminUsers = () => {
                 method: 'PATCH',
                 body: JSON.stringify({ role: newRole }),
             });
-            alert('등급이 변경되었습니다.');
+            alert('계정 타입이 변경되었습니다.');
             fetchUsersSilently();
         } catch (error) {
             alert('오류 발생: ' + error.message);
@@ -76,6 +76,7 @@ const AdminUsers = () => {
                             <ArrowLeft className="w-4 h-4 mr-1" /> 대시보드로
                         </button>
                         <h1 className="text-3xl font-bold">회원 관리</h1>
+                        <p className="mt-2 text-sm text-gray-500">이름, 이메일, 계정 타입을 확인하고 권한을 변경할 수 있습니다.</p>
                     </div>
                     <div className="bg-white px-4 py-2 border rounded-lg shadow-sm font-bold">
                         총 회원 <span className="text-blue-600">{users.length}</span>명
@@ -114,7 +115,7 @@ const AdminUsers = () => {
                                             </td>
                                             <td className="p-4">
                                                 <select
-                                                    value={user.role || 'member'}
+                                                    value={user.role || 'general'}
                                                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                                                     className={`border rounded-lg px-3 py-1.5 text-sm font-bold outline-none transition-colors cursor-pointer ${user.role === 'admin'
                                                             ? 'bg-blue-50 text-blue-700 border-blue-200'
