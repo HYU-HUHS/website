@@ -14,6 +14,27 @@ pub struct AppState {
     pub db: SqlitePool,
 }
 
+async fn ensure_column(pool: &SqlitePool, table: &str, column: &str, definition: &str) {
+    let rows = sqlx::query(&format!("PRAGMA table_info({table})"))
+        .fetch_all(pool)
+        .await
+        .expect("테이블 정보를 읽지 못했습니다.");
+
+    let exists = rows.iter().any(|row| {
+        use sqlx::Row;
+        row.try_get::<String, _>("name")
+            .map(|name| name == column)
+            .unwrap_or(false)
+    });
+
+    if !exists {
+        sqlx::query(&format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+            .execute(pool)
+            .await
+            .expect("컬럼 추가에 실패했습니다.");
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // 1. 데이터베이스 연결 및 테이블 생성
@@ -35,7 +56,66 @@ async fn main() {
             status TEXT DEFAULT 'submitted',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+        "
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
 
+    sqlx::query(
+        "
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT,
+            gid TEXT UNIQUE,
+            name TEXT DEFAULT '',
+            student_id TEXT DEFAULT '',
+            major TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            picture_url TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        "
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "
+        CREATE TABLE IF NOT EXISTS profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            role TEXT,
+            name TEXT,
+            student_id TEXT,
+            major TEXT,
+            phone TEXT,
+            picture_url TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        "
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "
+        CREATE TABLE IF NOT EXISTS session_tokens (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        "
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "
         CREATE TABLE IF NOT EXISTS inquiries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -51,11 +131,26 @@ async fn main() {
     .await
     .unwrap();
 
+    ensure_column(&pool, "users", "password", "TEXT").await;
+    ensure_column(&pool, "users", "gid", "TEXT").await;
+    ensure_column(&pool, "users", "name", "TEXT DEFAULT ''").await;
+    ensure_column(&pool, "users", "student_id", "TEXT DEFAULT ''").await;
+    ensure_column(&pool, "users", "major", "TEXT DEFAULT ''").await;
+    ensure_column(&pool, "users", "phone", "TEXT DEFAULT ''").await;
+    ensure_column(&pool, "users", "picture_url", "TEXT DEFAULT ''").await;
+    ensure_column(&pool, "profiles", "role", "TEXT").await;
+    ensure_column(&pool, "profiles", "name", "TEXT").await;
+    ensure_column(&pool, "profiles", "student_id", "TEXT").await;
+    ensure_column(&pool, "profiles", "major", "TEXT").await;
+    ensure_column(&pool, "profiles", "phone", "TEXT").await;
+    ensure_column(&pool, "profiles", "picture_url", "TEXT").await;
+
     let state = Arc::new(AppState { db: pool });
 
     // 2. CORS (보안) 설정
     let cors = CorsLayer::new()
         .allow_methods([Method::POST])
+        .allow_headers(Any)
         .allow_origin(Any);
 
     // 3. 라우터 설정 (분리한 파일의 핸들러 함수들을 매핑)

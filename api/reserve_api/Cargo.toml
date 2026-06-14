@@ -7,5 +7,7 @@ edition = "2024"
 axum = "0.7"                                      # 웹 서버 프레임워크
 tokio = { version = "1.0", features = ["full"] }    # 비동기 엔진
 serde = { version = "1.0", features = ["derive"] }  # JSON 변환기
+serde_json = "1.0"
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono"] } # DB 심부름꾼
 chrono = { version = "0.4", features = ["serde"] }  # 시간 계산기
+tower-http = { version = "0.5", features = ["cors"] }

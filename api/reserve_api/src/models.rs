@@ -14,12 +14,19 @@ pub struct Reservation {
     pub status: Option<String>,
 }
 
+#[derive(Debug, FromRow)]
+pub struct AuthUser {
+    pub name: String,
+    pub student_id: String,
+    pub major: String,
+    pub phone: String,
+    pub role: String,
+}
+
 // 2. 사용자가 예약을 신청할 때(입력받을 때) 사용하는 틀
 // 사용자는 id를 보내지 않으므로(DB가 자동 생성), id를 제외한 나머지만 정의합니다.
 #[derive(Debug, Deserialize)]
 pub struct CreateReservationRequest {
-    pub student_id: String,
-    pub name: String,
     pub reserved_at: String,
     pub participant_count: i32,
     pub purpose: Option<String>,
