@@ -670,9 +670,9 @@ export const onRequest = async ({ request, env, next }) => {
   const url = new URL(request.url);
 
   try {
-    if (url.pathname.startsWith('/api')) return routeApi(request, env, url.pathname);
-    if (url.pathname.startsWith('/uploads/')) return handleUploadedAsset(request, env, url.pathname);
-    return next();
+    if (url.pathname.startsWith('/api')) return await routeApi(request, env, url.pathname);
+    if (url.pathname.startsWith('/uploads/')) return await handleUploadedAsset(request, env, url.pathname);
+    return await next();
   } catch (error) {
     if (error.body) return json({ error: error.message, ...error.body }, error.status || 500);
     return errorResponse(error);
