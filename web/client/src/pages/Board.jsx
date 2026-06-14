@@ -7,7 +7,7 @@ import { PenSquare, Image as ImageIcon, ArrowRight, Images } from 'lucide-react'
 
 function Board() {
     const [posts, setPosts] = useState([]);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [canWrite, setCanWrite] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -17,10 +17,7 @@ function Board() {
 
     const checkUserRole = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            const { data } = await supabase.from('admin_users').select('*').eq('email', user.email);
-            if (data.length > 0) setIsAdmin(true);
-        }
+        setCanWrite(user?.role === 'member' || user?.role === 'admin');
     };
 
     const fetchPosts = async () => {
@@ -72,7 +69,7 @@ function Board() {
                         </motion.div>
 
                         {/* 2. 글쓰기 버튼 (우측 하단에 띄움) */}
-                        {isAdmin && (
+                        {canWrite && (
                             <motion.div
                                 className="absolute right-0 bottom-0 hidden md:block" // 데스크탑에서만 절대위치 (모바일은 아래에)
                                 initial={{ opacity: 0, x: 20 }}
@@ -90,7 +87,7 @@ function Board() {
                         )}
 
                         {/* 모바일용 글쓰기 버튼 (작은 화면에서는 제목 아래에 중앙 정렬되도록) */}
-                        {isAdmin && (
+                        {canWrite && (
                             <motion.div
                                 className="flex justify-center mt-6 md:hidden"
                                 initial={{ opacity: 0, y: 20 }}

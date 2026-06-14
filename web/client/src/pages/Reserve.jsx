@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Clock, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiRequest } from '../lib/api';
@@ -13,8 +14,11 @@ const initialForm = {
 };
 
 const Reserve = () => {
+  const navigate = useNavigate();
   const [reservations, setReservations] = useState([]);
   const [form, setForm] = useState(initialForm);
+  const [profile, setProfile] = useState(null);
+  const canReserve = profile?.role === 'member' || profile?.role === 'admin';
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -31,6 +35,21 @@ const Reserve = () => {
   };
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const payload = await apiRequest('/auth/me');
+        const user = payload.data.user;
+        setProfile(user);
+        setForm((current) => ({
+          ...current,
+          student_id: user.student_id || '',
+          name: user.name || '',
+        }));
+      } catch {
+        setProfile(null);
+      }
+    };
+    fetchProfile();
     fetchReservations();
   }, []);
 
@@ -43,19 +62,37 @@ const Reserve = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!profile) {
+      alert('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+    if (!canReserve) {
+      alert('동아리방 예약은 승인된 부원만 사용할 수 있습니다.');
+      navigate('/join');
+      return;
+    }
     setSubmitting(true);
     try {
       await apiRequest('/reservations', {
         method: 'POST',
         body: JSON.stringify({
-          ...form,
+          reserved_at: form.reserved_at,
           participant_count: Number(form.participant_count),
+          purpose: form.purpose,
         }),
       });
       alert('동아리방 예약이 완료되었습니다.');
-      setForm(initialForm);
+      setForm({
+        ...initialForm,
+        student_id: profile?.student_id || '',
+        name: profile?.name || '',
+      });
       fetchReservations();
     } catch (error) {
+      if (error.message.includes('로그인') || error.message.includes('프로필')) {
+        navigate(error.message.includes('프로필') ? '/profile' : '/login');
+      }
       alert(error.message);
     } finally {
       setSubmitting(false);
@@ -83,13 +120,19 @@ const Reserve = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {profile && !canReserve && (
+                <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+                  동아리방 예약은 관리자 승인 후 부원부터 사용할 수 있습니다.
+                </div>
+              )}
               <label className="flex flex-col gap-2 font-bold text-gray-dark">
                 학번
                 <input
                   required
                   value={form.student_id}
-                  onChange={(e) => setForm({ ...form, student_id: e.target.value })}
-                  className="p-3 bg-bg-subtle border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/50 text-black font-medium"
+                  readOnly
+                  onClick={() => !profile && navigate('/login')}
+                  className="p-3 bg-bg-subtle border border-border rounded-xl outline-none text-black font-medium"
                   placeholder="20260000"
                 />
               </label>
@@ -98,8 +141,9 @@ const Reserve = () => {
                 <input
                   required
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="p-3 bg-bg-subtle border border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/50 text-black font-medium"
+                  readOnly
+                  onClick={() => !profile && navigate('/login')}
+                  className="p-3 bg-bg-subtle border border-border rounded-xl outline-none text-black font-medium"
                   placeholder="홍길동"
                 />
               </label>
@@ -135,7 +179,7 @@ const Reserve = () => {
               </label>
               <div className="sm:col-span-2 flex justify-end">
                 <button
-                  disabled={submitting}
+                  disabled={submitting || (profile && !canReserve)}
                   className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-5 h-5" />

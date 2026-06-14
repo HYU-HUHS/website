@@ -9,6 +9,9 @@ const Header = () => {
   const [activeDropdown, setActiveDropdown] = useState(null); // PC버전 드롭다운 상태
   const [user, setUser] = useState(null);
   const location = useLocation();
+  const role = user?.role || 'general';
+  const canApply = role === 'general';
+  const canReserve = role === 'member' || role === 'admin';
 
   // 스크롤 감지 (배경 투명 -> 블러 처리)
   useEffect(() => {
@@ -57,8 +60,12 @@ const Header = () => {
         { label: '연혁', path: '/history' },
         { label: '조직도', path: '/exec' },
         { label: '동아리방', path: '/location' },
-        { label: '동아리방 예약', path: '/reserve' },
       ]
+    },
+    canReserve && {
+      label: 'Reserve',
+      path: '/reserve',
+      children: []
     },
     {
       label: 'Community',
@@ -76,12 +83,12 @@ const Header = () => {
         { label: '스터디 자료', path: '/study' },
       ]
     },
-    {
+    canApply && {
       label: 'Join',
       path: '/join',
       children: []
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <header
@@ -142,7 +149,9 @@ const Header = () => {
           <div className="hidden md:block">
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="text-xs text-white/90 font-medium">{user.email?.split('@')[0]}님</span>
+                <Link to="/profile" className="text-xs text-white/90 font-medium hover:underline">
+                  {(user.name || user.email?.split('@')[0])}님
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="text-xs font-bold bg-white text-primary-dark hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors"
@@ -205,12 +214,20 @@ const Header = () => {
           {/* 모바일 로그인/로그아웃 */}
           <div className="pt-4 pb-8">
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="w-full text-center py-3 bg-white border border-gray-border rounded-xl font-bold text-primary shadow-sm"
-              >
-                로그아웃
-              </button>
+              <div className="space-y-3">
+                <Link
+                  to="/profile"
+                  className="block w-full text-center py-3 bg-primary text-white rounded-xl font-bold shadow-md"
+                >
+                  내 정보 수정
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-center py-3 bg-white border border-gray-border rounded-xl font-bold text-primary shadow-sm"
+                >
+                  로그아웃
+                </button>
+              </div>
             ) : (
               <Link
                 to="/login"

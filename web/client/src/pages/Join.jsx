@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ChevronDown, ChevronUp, Mail, Send, Sparkles } from 'lucide-react';
 import { apiRequest } from '../lib/api';
@@ -13,9 +14,12 @@ const initialApplication = {
 };
 
 const Join = () => {
+    const navigate = useNavigate();
     const [faqs, setFaqs] = useState([]);
     const [openIndex, setOpenIndex] = useState(null);
     const [application, setApplication] = useState(initialApplication);
+    const [profile, setProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     // FAQ 데이터 가져오기
@@ -27,7 +31,27 @@ const Join = () => {
                 .order('id', { ascending: true });
             if (!error) setFaqs(data);
         };
+        const fetchProfile = async () => {
+            try {
+                const payload = await apiRequest('/auth/me');
+                const user = payload.data.user;
+                setProfile(user);
+                setApplication((current) => ({
+                    ...current,
+                    name: user.name || '',
+                    student_id: user.student_id || '',
+                    major: user.major || '',
+                    phone: user.phone || '',
+                    email: user.email || '',
+                }));
+            } catch {
+                setProfile(null);
+            } finally {
+                setProfileLoading(false);
+            }
+        };
         fetchFaqs();
+        fetchProfile();
     }, []);
 
     const toggleFaq = (index) => {
@@ -36,15 +60,34 @@ const Join = () => {
 
     const handleApply = async (event) => {
         event.preventDefault();
+        if (!profile) {
+            alert('로그인이 필요합니다.');
+            navigate('/login');
+            return;
+        }
+        if (profile.role !== 'general') {
+            alert('가입 신청은 일반 유저만 사용할 수 있습니다.');
+            return;
+        }
         setSubmitting(true);
         try {
             await apiRequest('/recruit/apply', {
                 method: 'POST',
-                body: JSON.stringify(application),
+                body: JSON.stringify({ message: application.message }),
             });
             alert('지원서 접수가 완료되었습니다.');
-            setApplication(initialApplication);
+            setApplication({
+                ...initialApplication,
+                name: profile?.name || '',
+                student_id: profile?.student_id || '',
+                major: profile?.major || '',
+                phone: profile?.phone || '',
+                email: profile?.email || '',
+            });
         } catch (error) {
+            if (error.message.includes('로그인') || error.message.includes('프로필')) {
+                navigate(error.message.includes('프로필') ? '/profile' : '/login');
+            }
             alert(error.message);
         } finally {
             setSubmitting(false);
@@ -88,26 +131,43 @@ const Join = () => {
                         아래 지원서를 작성하면 운영진에게 바로 접수됩니다.<br />
                         포트폴리오가 있다면 마지막 문항에 링크를 함께 적어주세요.
                     </p>
+                    {profileLoading ? (
+                        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-gray-500 font-bold">
+                            로그인 정보를 확인하는 중입니다.
+                        </div>
+                    ) : !profile ? (
+                        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8">
+                            <p className="text-gray-600 mb-6">한양대학교 계정으로 로그인한 뒤 가입 신청을 할 수 있습니다.</p>
+                            <button onClick={() => navigate('/login')} className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors">
+                                로그인하러 가기
+                            </button>
+                        </div>
+                    ) : profile.role !== 'general' ? (
+                        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8">
+                            <p className="text-gray-700 font-bold">이미 HUHS 부원 권한이 있는 계정입니다.</p>
+                            <p className="text-gray-500 mt-2">동아리방 예약과 커뮤니티 활동을 이용해주세요.</p>
+                        </div>
+                    ) : (
                     <form onSubmit={handleApply} className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
                         <label className="flex flex-col gap-2 font-bold text-gray-700">
                             이름
-                            <input required value={application.name} onChange={(e) => setApplication({ ...application, name: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="홍길동" />
+                            <input required readOnly value={application.name} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium" placeholder="홍길동" />
                         </label>
                         <label className="flex flex-col gap-2 font-bold text-gray-700">
                             학번
-                            <input required value={application.student_id} onChange={(e) => setApplication({ ...application, student_id: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="20260000" />
+                            <input required readOnly value={application.student_id} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium" placeholder="20260000" />
                         </label>
                         <label className="flex flex-col gap-2 font-bold text-gray-700">
                             전공
-                            <input required value={application.major} onChange={(e) => setApplication({ ...application, major: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="컴퓨터공학과" />
+                            <input required readOnly value={application.major} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium" placeholder="컴퓨터공학과" />
                         </label>
                         <label className="flex flex-col gap-2 font-bold text-gray-700">
                             연락처
-                            <input required value={application.phone} onChange={(e) => setApplication({ ...application, phone: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="010-0000-0000" />
+                            <input required readOnly value={application.phone} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium" placeholder="010-0000-0000" />
                         </label>
                         <label className="sm:col-span-2 flex flex-col gap-2 font-bold text-gray-700">
                             이메일
-                            <input required type="email" value={application.email} onChange={(e) => setApplication({ ...application, email: e.target.value })} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/40 font-medium" placeholder="huhs@example.com" />
+                            <input required readOnly type="email" value={application.email} className="p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium" placeholder="huhs@example.com" />
                         </label>
                         <label className="sm:col-span-2 flex flex-col gap-2 font-bold text-gray-700">
                             지원 동기
@@ -120,6 +180,7 @@ const Join = () => {
                             </button>
                         </div>
                     </form>
+                    )}
                 </div>
             </div>
 
