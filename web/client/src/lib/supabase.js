@@ -16,8 +16,10 @@ const writeSession = (session) => {
 };
 
 const request = async (path, options = {}) => {
+  const session = readSession();
+  const authHeaders = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: options.body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+    headers: options.body instanceof FormData ? authHeaders : { 'Content-Type': 'application/json', ...authHeaders },
     ...options,
   });
   const payload = await response.json().catch(() => ({}));
@@ -130,6 +132,17 @@ export const supabase = {
       const session = readSession();
       return { data: { user: session?.user || null }, error: null };
     },
+    async refreshUser() {
+      try {
+        const payload = await request('/auth/me');
+        const session = readSession();
+        const nextSession = session ? { ...session, user: payload.data.user } : null;
+        writeSession(nextSession);
+        return { data: { user: payload.data.user, session: nextSession }, error: null };
+      } catch (error) {
+        return { data: { user: null, session: null }, error };
+      }
+    },
     onAuthStateChange(callback) {
       const handler = (event) => callback('SIGNED_IN', event.detail);
       window.addEventListener('huhsweb-auth', handler);
@@ -157,6 +170,18 @@ export const supabase = {
         const payload = await request('/auth/login', {
           method: 'POST',
           body: JSON.stringify(credentials),
+        });
+        writeSession(payload.data.session);
+        return { data: payload.data, error: null };
+      } catch (error) {
+        return { data: null, error };
+      }
+    },
+    async signInWithGoogleCredential(credential) {
+      try {
+        const payload = await request('/auth/google', {
+          method: 'POST',
+          body: JSON.stringify({ credential }),
         });
         writeSession(payload.data.session);
         return { data: payload.data, error: null };

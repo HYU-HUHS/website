@@ -11,6 +11,7 @@ import About from './pages/About';
 {/* import Gallery from './pages/Gallery'; */ }
 import Contact from './pages/Contact';
 import Login from './pages/Login';
+import Profile from './pages/Profile';
 import Board from './pages/Board';
 import Write from './pages/Write';
 import PostDetail from './pages/PostDetail';
@@ -67,6 +68,7 @@ function App() {
             {/* <Route path="/gallery" element={<Gallery />} /> */}
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/board" element={<Board />} />
             <Route path="/board/write" element={<Write />} />
             <Route path="/board/:id" element={<PostDetail />} />

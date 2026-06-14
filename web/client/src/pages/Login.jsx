@@ -1,93 +1,108 @@
-import React, { useState } from 'react';
-import { supabase } from '../lib/supabase'; // 출입증 가져오기
-import { useNavigate } from 'react-router-dom'; // 페이지 이동용
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Mail } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import PageTransition from '../components/PageTransition';
 
+const GOOGLE_SCRIPT_ID = 'google-identity-services';
+
+const loadGoogleScript = () =>
+  new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById(GOOGLE_SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = GOOGLE_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
 function Login() {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [isSignUp, setIsSignUp] = useState(false); // true면 회원가입 모드
+  const navigate = useNavigate();
+  const buttonRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-    // 로그인 & 회원가입 처리 함수
-    const handleAuth = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+  useEffect(() => {
+    if (!clientId || !buttonRef.current) return;
 
-        let result;
-        if (isSignUp) {
-            // 1. 회원가입 요청
-            result = await supabase.auth.signUp({ email, password });
-        } else {
-            // 2. 로그인 요청
-            result = await supabase.auth.signInWithPassword({ email, password });
-        }
-
-        const { data, error } = result;
-
-        if (error) {
-            alert("에러 발생: " + error.message);
-        } else {
-            if (isSignUp) {
-                alert("가입 성공! 이제 로그인해주세요.");
-                setIsSignUp(false); // 로그인 모드로 전환
-            } else {
-                alert("로그인 성공! 환영합니다.");
-                navigate('/'); // 홈으로 이동
+    let cancelled = false;
+    loadGoogleScript()
+      .then(() => {
+        if (cancelled) return;
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          hd: 'hanyang.ac.kr',
+          callback: async ({ credential }) => {
+            setLoading(true);
+            setError('');
+            const { data, error: signInError } = await supabase.auth.signInWithGoogleCredential(credential);
+            setLoading(false);
+            if (signInError) {
+              setError(signInError.message);
+              return;
             }
-        }
-        setLoading(false);
+            const user = data?.user;
+            const needsProfile = !user?.student_id || !user?.major || !user?.phone || !user?.name;
+            navigate(needsProfile ? '/profile' : '/');
+          },
+        });
+        window.google.accounts.id.renderButton(buttonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'pill',
+          text: 'signin_with',
+          width: 320,
+        });
+      })
+      .catch(() => setError('Google 로그인 스크립트를 불러오지 못했습니다.'));
+
+    return () => {
+      cancelled = true;
     };
+  }, [clientId, navigate]);
 
-    return (
-        <PageTransition>
-            <div className="max-w-md mx-auto mt-20 p-8 bg-white rounded-2xl shadow-lg border border-gray-100 text-center">
-                <h1 className="text-3xl font-bold mb-6 text-gray-800">
-                    {isSignUp ? '✨ 회원가입' : '🔑 로그인'}
-                </h1>
+  return (
+    <PageTransition>
+      <div className="min-h-screen bg-bg-subtle pt-32 pb-20 px-4 font-pretendard">
+        <section className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-border p-8 text-center">
+          <div className="mx-auto mb-5 w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <Mail className="w-6 h-6" />
+          </div>
+          <h1 className="text-3xl font-black text-black mb-3">HUHS 로그인</h1>
+          <p className="text-gray-dark mb-8 leading-relaxed">
+            한양대학교 Google 계정으로 로그인해주세요.
+          </p>
 
-                <form onSubmit={handleAuth} className="flex flex-col gap-4">
-                    <input
-                        type="email"
-                        placeholder="이메일"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="비밀번호 (6자리 이상)"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`p-3 rounded-lg text-white font-bold transition-all ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
-                            }`}
-                    >
-                        {loading ? '처리 중...' : (isSignUp ? '가입하기' : '로그인')}
-                    </button>
-                </form>
-
-                {/* 모드 전환 버튼 */}
-                <p className="mt-4 text-gray-600 text-sm">
-                    {isSignUp ? '이미 계정이 있나요?' : '아직 계정이 없나요?'}
-                    <button
-                        onClick={() => setIsSignUp(!isSignUp)}
-                        className="ml-2 text-blue-600 font-bold hover:underline"
-                    >
-                        {isSignUp ? '로그인하러 가기' : '회원가입하기'}
-                    </button>
-                </p>
+          {clientId ? (
+            <div className="flex justify-center min-h-11" ref={buttonRef} />
+          ) : (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+              VITE_GOOGLE_CLIENT_ID 환경변수가 필요합니다.
             </div>
-        </PageTransition>
-    );
+          )}
+
+          {loading && <p className="mt-5 text-sm font-bold text-primary">로그인 처리 중...</p>}
+          {error && <p className="mt-5 text-sm font-bold text-red-600">{error}</p>}
+          <p className="mt-8 text-xs text-gray-dark">
+            hanyang.ac.kr 도메인 계정만 사용할 수 있습니다.
+          </p>
+        </section>
+      </div>
+    </PageTransition>
+  );
 }
 
 export default Login;
